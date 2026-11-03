@@ -7,82 +7,85 @@
 @Metadata.ignorePropagatedAnnotations: true
 
 define view entity ZQM_I_STOCK_INSP
-  as select from           /SCWM/AQUA as Stock
+  as select from           /scwm/aqua as Stock
 
-    left outer join        QALS       as InspectionLot on Stock.INSPID = InspectionLot.LOT_GUID
+    left outer join        qals       as InspectionLot on Stock.inspid = InspectionLot.lot_guid
 
     // Approved V1 assumption: each inspection lot has zero or one notification.
-    left outer to one join QMEL       as Notification  on InspectionLot.PRUEFLOS = Notification.PRUEFLOS
+    left outer to one join qmel       as Notification  on InspectionLot.prueflos = Notification.prueflos
 
 {
-  key Stock.GUID_PARENT        as ParentGuid,
-  key Stock.GUID_STOCK         as StockGuid,
+  key Stock.guid_parent        as ParentGuid,
+  key Stock.guid_stock         as StockGuid,
 
-      Stock.LGNUM              as WarehouseNumber,
-      Stock.LGTYP              as StorageType,
-      Stock.LGPLA              as StorageBin,
-      Stock.HUIDENT            as HandlingUnit,
-      Stock.MATID              as ProductGuid,
-      Stock.CHARG              as Batch,
-      Stock.CAT                as StockType,
-      Stock.QUAN               as Quantity,
-      Stock.UNIT               as UnitOfMeasure,
-      Stock.WDATU              as GoodsReceiptDateTime,
-      Stock.INSPID             as InspectionId,
-      Stock.INSPTYP            as InspectionIdType,
-      Stock.FLGMOVE            as HandlingUnitIsMoving,
+      Stock.lgnum              as WarehouseNumber,
+      Stock.lgtyp              as StorageType,
+      Stock.lgpla              as StorageBin,
+      Stock.huident            as HandlingUnit,
+      Stock.matid              as ProductGuid,
+      Stock.charg              as Batch,
+      Stock.cat                as StockType,
 
-      InspectionLot.LOT_GUID   as InspectionLotGuid,
-      InspectionLot.PRUEFLOS   as InspectionLotNumber,
-      InspectionLot.ART        as InspectionType,
-      InspectionLot.HERKUNFT   as InspectionLotOrigin,
-      InspectionLot.WERK       as Plant,
-      InspectionLot.MATNR      as Material,
-      InspectionLot.CHARG      as InspectionLotBatch,
-      InspectionLot.LIFNR      as Supplier,
-      InspectionLot.KUNNR      as Customer,
-      InspectionLot.ENSTEHDAT  as InspectionLotCreationDate,
-      InspectionLot.ENTSTEZEIT as InspectionLotCreationTime,
-      InspectionLot.KZSKIPLOT  as InspectionLotSkipped,
-      InspectionLot.STAT35     as UsageDecisionMade,
-      InspectionLot.STAT34     as StockPostingsCompleted,
-      InspectionLot.STAT37     as InspectionLotBlockedArchiving,
-      
-      Notification.QMNUM       as NotificationNumber,
-      Notification.QMART       as NotificationType,
-      Notification.QMTXT       as NotificationShortText,
-      Notification.PHASE       as NotificationPhase,
-      Notification.KZLOESCH    as NotificationDeletionIndicator,
-      Notification.ERDAT       as NotificationCreationDate,
-      Notification.AEDAT       as NotificationChangeDate,
-      Notification.MATNR       as NotificationMaterial,
-      Notification.CHARG       as NotificationBatch,
-      Notification.MAWERK      as NotificationPlant,
+      @Semantics.quantity.unitOfMeasure: 'UnitOfMeasure'
+      Stock.quan               as Quantity,
+
+      Stock.unit               as UnitOfMeasure,
+      Stock.wdatu              as GoodsReceiptDateTime,
+      Stock.inspid             as InspectionId,
+      Stock.insptyp            as InspectionIdType,
+      Stock.flgmove            as HandlingUnitIsMoving,
+
+      InspectionLot.lot_guid   as InspectionLotGuid,
+      InspectionLot.prueflos   as InspectionLotNumber,
+      InspectionLot.art        as InspectionType,
+      InspectionLot.herkunft   as InspectionLotOrigin,
+      InspectionLot.werk       as Plant,
+      InspectionLot.matnr      as Material,
+      InspectionLot.charg      as InspectionLotBatch,
+      InspectionLot.lifnr      as Supplier,
+      InspectionLot.kunnr      as Customer,
+      InspectionLot.enstehdat  as InspectionLotCreationDate,
+      InspectionLot.entstezeit as InspectionLotCreationTime,
+      InspectionLot.kzskiplot  as InspectionLotSkipped,
+      InspectionLot.stat35     as UsageDecisionMade,
+      InspectionLot.stat34     as StockPostingsCompleted,
+      InspectionLot.stat37     as InspecLotBlockedArch,
+
+      Notification.qmnum       as NotificationNumber,
+      Notification.qmart       as NotificationType,
+      Notification.qmtxt       as NotificationShortText,
+      Notification.phase       as NotificationPhase,
+      Notification.kzloesch    as NotificationDeletionIndicator,
+      Notification.erdat       as NotificationCreationDate,
+      Notification.aedat       as NotificationChangeDate,
+      Notification.matnr       as NotificationMaterial,
+      Notification.charg       as NotificationBatch,
+      Notification.mawerk      as NotificationPlant,
 
       case
-        when Stock.INSPID is initial
+        when bintohex(Stock.inspid) = '00000000000000000000000000000000'
           then 'NO_INSPECTION_REFERENCE'
-        when InspectionLot.LOT_GUID is null
+        when InspectionLot.lot_guid is null
           then 'INSPECTION_NOT_FOUND'
         else 'INSPECTION_FOUND'
       end                      as InspectionLinkStatus,
 
       case
-        when Notification.PRUEFLOS is null
+        when Notification.prueflos is null
           then 'NO_NOTIFICATION'
-        when Notification.KZLOESCH is not initial
+        when Notification.kzloesch is not initial
           then 'NOTIFICATION_DELETED'
-        when Notification.PHASE = '4'
+        when Notification.phase = '4'
           then 'NOTIFICATION_CLOSED'
         else 'NOTIFICATION_FOUND'
       end                      as NotificationLinkStatus,
 
       case
-        when Stock.INSPID is initial
+        when bintohex(Stock.inspid) = '00000000000000000000000000000000'
           then 'WARNING'
-        when InspectionLot.LOT_GUID is null
+        when InspectionLot.lot_guid is null
           then 'ERROR'
-        when Notification.KZLOESCH is not initial
+        when Notification.kzloesch is not initial
           then 'WARNING'
         else 'OK'
       end                      as DataConsistencyStatus
